@@ -8,6 +8,9 @@ using Conversion;
 using Dynastream.Fit;
 using Flurl;
 using Flurl.Http;
+using Flurl.Http.Configuration;
+using Garmin;
+using Garmin.Auth;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel.DataCollection;
 using Moq;
@@ -19,6 +22,7 @@ using Serilog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -38,6 +42,15 @@ namespace UnitTests
 					.MinimumLevel.Verbose()
 					//.MinimumLevel.Information()
 					.CreateLogger();
+
+			// Allows using fiddler
+			FlurlHttp.Clients.WithDefaults(cli =>
+			{
+				cli.ConfigureInnerHandler(handler =>
+				{
+					handler.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
+				});
+			});
 		}
 
 		//[Test]
@@ -102,8 +115,7 @@ namespace UnitTests
 		//	var email = "";
 		//	var password = "";
 
-		//	var workoutId = "db3ec6bf91094060aaad7df12a1f1ca1";
-		//	var userId = "bfe1cd4a3f554a53b2ac0af386562e3d";
+		//	var workoutId = "631fe107823048708d4c9f18a2888c6e";
 
 		//	var settings = new Settings()
 		//	{
@@ -138,7 +150,7 @@ namespace UnitTests
 		//[Test]
 		//public async Task Convert_From_File()
 		//{
-		//	var file = Path.Join(DataDirectory, "strength_with_exercises.json");
+		//	var file = Path.Join(DataDirectory, "631fe107823048708d4c9f18a2888c6e_workout.json");
 		//	//var file = Path.Join(DataDirectory, "cycling_target_metrics.json");
 		//	//var file = Path.Join(DataDirectory, "tread_run_workout.json");
 
@@ -192,16 +204,16 @@ namespace UnitTests
 
 			public async Task<ICollection<Mesg>> ConvertForTest(string path, Settings settings)
 			{
-				var workoutData = fileHandler.DeserializeJson<P2GWorkout>(path);
-				var converted = await this.ConvertInternalAsync(workoutData.Workout, workoutData.WorkoutSamples, workoutData.UserData, settings);
+				var workoutData = fileHandler.DeserializeJsonFile<P2GWorkout>(path);
+				var converted = await this.ConvertInternalAsync(workoutData, settings);
 
 				return converted.Item2;
 			}
 
 			public async Task<Tuple<string, ICollection<Mesg>>> Convert(string path, Settings settings)
 			{
-				var workoutData = fileHandler.DeserializeJson<P2GWorkout>(path);
-				var converted = await this.ConvertInternalAsync(workoutData.Workout, workoutData.WorkoutSamples, workoutData.UserData, settings);
+				var workoutData = fileHandler.DeserializeJsonFile<P2GWorkout>(path);
+				var converted = await this.ConvertInternalAsync(workoutData, settings);
 
 				return converted;
 			}
